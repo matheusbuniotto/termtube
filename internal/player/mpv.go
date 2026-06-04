@@ -7,6 +7,9 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -28,6 +31,49 @@ func NewMPV(cfg config.Config) *MPV {
 
 func (m *MPV) SocketPath() string {
 	return m.cfg.IPCSocket
+}
+
+// pidFilePath is the file that records the PID of the mpv this session spawned,
+// sitting next to the shared IPC socket so a later session can find an orphan.
+func pidFilePath(cfg config.Config) string {
+	return filepath.Join(filepath.Dir(cfg.IPCSocket), "mpv.pid")
+}
+
+// ReapStale terminates any mpv left running by a previous termtube session.
+// Sessions share one fixed IPC socket and pidfile, so a fresh process can find
+// and kill an orphan that survived an ungraceful exit (closed terminal, crash)
+// before it starts its own player — otherwise both keep playing at once.
+func ReapStale(cfg config.Config) {
+	socket := cfg.IPCSocket
+	pidPath := pidFilePath(cfg)
+
+	// Preferred path: a prior mpv is still listening on the shared socket. Tell
+	// it to quit — it's the real process, so there's no PID-reuse risk.
+	if conn, err := net.DialTimeout("unix", socket, 500*time.Millisecond); err == nil {
+		_, _ = conn.Write([]byte(`{"command":["quit"]}` + "\n"))
+		_ = conn.Close()
+		time.Sleep(200 * time.Millisecond) // let mpv exit and release the socket
+	} else if data, err := os.ReadFile(pidPath); err == nil {
+		// Socket is dead (ungraceful exit). Fall back to the recorded PID, but
+		// confirm it's actually mpv first so a recycled PID isn't killed.
+		if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 0 && isMpv(pid) {
+			if proc, err := os.FindProcess(pid); err == nil {
+				_ = proc.Signal(syscall.SIGTERM)
+			}
+		}
+	}
+	_ = os.Remove(socket)
+	_ = os.Remove(pidPath)
+}
+
+// isMpv reports whether pid belongs to a live mpv process, guarding the
+// pidfile-kill fallback against PID reuse.
+func isMpv(pid int) bool {
+	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "comm=").Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(out), "mpv")
 }
 
 func (m *MPV) PlayURL(streamURL string) error {
@@ -61,6 +107,12 @@ func (m *MPV) PlayURL(streamURL string) error {
 	m.cmd = cmd
 	m.paused = false
 	m.mu.Unlock()
+
+	// Record the PID so a future session can reap this mpv if we exit
+	// ungracefully (closed terminal, crash) and never run Stop().
+	if cmd.Process != nil {
+		_ = os.WriteFile(pidFilePath(m.cfg), []byte(strconv.Itoa(cmd.Process.Pid)), 0o644)
+	}
 	return nil
 }
 
@@ -75,6 +127,7 @@ func (m *MPV) Stop() {
 		_ = cmd.Wait()
 	}
 	_ = os.Remove(m.cfg.IPCSocket)
+	_ = os.Remove(pidFilePath(m.cfg))
 }
 
 func (m *MPV) Running() bool {

@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/matheusbuniotto/termtube/internal/config"
+	"github.com/matheusbuniotto/termtube/internal/player"
 	"github.com/matheusbuniotto/termtube/internal/ui"
 )
 
@@ -30,6 +31,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "cache dir: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Kill any mpv left playing by a previous session before we start ours,
+	// so two players can't overlap (e.g. after an ungraceful exit).
+	player.ReapStale(cfg)
 
 	m := ui.NewModel(cfg, ui.Options{NoSplash: *noSplash})
 	p := tea.NewProgram(m, tea.WithAltScreen())
