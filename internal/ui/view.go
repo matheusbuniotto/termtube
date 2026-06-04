@@ -23,7 +23,7 @@ func (m *Model) View() string {
 
 	var b strings.Builder
 
-	header := styleHeader.Render("ytune") +
+	header := styleHeader.Render("termtube") +
 		styleMode.Render("  ") +
 		modeLabel(m.panel) +
 		styleMode.Render(fmt.Sprintf("  · shuffle %s · repeat %s", onOff(m.shuffleOn), m.repeatMode))

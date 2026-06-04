@@ -1,4 +1,4 @@
-# ytune
+# termtube
 
 Terminal music player for YouTube. Search, queue tracks, and listen with **mpv** — no API keys.
 
@@ -15,20 +15,20 @@ brew install mpv yt-dlp
 ## Install
 
 ```bash
-git clone <repo-url> && cd CLI
+git clone https://github.com/matheusbuniotto/termtube && cd termtube
 make install
 # or
-go install ./cmd/ytune
+go install github.com/matheusbuniotto/termtube/cmd/termtube@latest
 ```
 
 ## Usage
 
 ```bash
-ytune
-ytune --no-splash   # skip intro
+termtube
+termtube --no-splash   # skip intro
 ```
 
-On launch you'll see an ASCII splash screen — press any key (or wait ~2 seconds) to enter the player.
+On launch you'll see an ASCII splash with a search box. Start typing and press `Enter` to search right away, press `Esc` to skip into an empty player, or just wait ~2 seconds. After a search you land directly on the results list — use `j`/`k` or arrows to move, `Enter` to play, `a` to queue.
 
 ## Keybindings
 
@@ -52,12 +52,12 @@ On launch you'll see an ASCII splash screen — press any key (or wait ~2 second
 
 ## Config
 
-Optional file at `~/.config/ytune/config.yaml`:
+Optional file at `~/.config/termtube/config.yaml`:
 
 ```yaml
 yt_dlp_path: yt-dlp
 mpv_path: mpv
-ipc_socket: ~/.cache/ytune/mpv.sock
+ipc_socket: ~/.cache/termtube/mpv.sock
 search_limit: 10
 ```
 

@@ -1,4 +1,4 @@
-module github.com/monkmode/ytune
+module github.com/matheusbuniotto/termtube
 
 go 1.26.3
 

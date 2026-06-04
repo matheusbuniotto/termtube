@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/monkmode/ytune/internal/config"
+	"github.com/matheusbuniotto/termtube/internal/config"
 )
 
 type MPV struct {

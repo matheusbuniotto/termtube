@@ -13,7 +13,9 @@ func (c *Client) AudioURL(ctx context.Context, videoID string) (string, error) {
 	}
 	url := fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
 	out, err := c.run(ctx,
-		"-f", "bestaudio[ext=m4a]/bestaudio/best",
+		// Audio-only: prefer m4a, fall back to any audio-only stream.
+		// No combined (video+audio) fallback so we never pull video bytes.
+		"-f", "bestaudio[ext=m4a]/bestaudio",
 		"-g",
 		"--no-warnings",
 		"--no-download",

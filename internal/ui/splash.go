@@ -11,12 +11,12 @@ import (
 const splashDuration = 2 * time.Second
 
 const asciiLogo = `
-██╗   ██╗████████╗██╗   ██╗███╗   ██╗███████╗
-╚██╗ ██╔╝╚══██╔══╝██║   ██║████╗  ██║██╔════╝
- ╚████╔╝    ██║   ██║   ██║██╔██╗ ██║█████╗
-  ╚██╔╝     ██║   ██║   ██║██║╚██╗██║██╔══╝
-   ██║      ██║   ╚██████╔╝██║ ╚████║███████╗
-   ╚═╝      ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝
+████████╗███████╗██████╗ ███╗   ███╗████████╗██╗   ██╗██████╗ ███████╗
+╚══██╔══╝██╔════╝██╔══██╗████╗ ████║╚══██╔══╝██║   ██║██╔══██╗██╔════╝
+   ██║   █████╗  ██████╔╝██╔████╔██║   ██║   ██║   ██║██████╔╝█████╗
+   ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║   ██║   ██║   ██║██╔══██╗██╔══╝
+   ██║   ███████╗██║  ██║██║ ╚═╝ ██║   ██║   ╚██████╔╝██████╔╝███████╗
+   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝   ╚═╝    ╚═════╝ ╚═════╝ ╚══════╝
 `
 
 var (
@@ -42,15 +42,23 @@ func splashDoneCmd() tea.Cmd {
 
 func (m *Model) dismissSplash() tea.Cmd {
 	m.showSplash = false
+	m.blurInputs()
 	return m.appInit()
 }
 
 func (m *Model) renderSplash() string {
 	logo := styleLogo.Render(strings.TrimRight(asciiLogo, "\n"))
 	tag := styleSplashTag.Render("terminal youtube music")
-	hint := styleSplashHint.Render("press any key to continue")
 
-	block := lipgloss.JoinVertical(lipgloss.Center, logo, "", tag, "", hint)
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorAccent).
+		Padding(0, 1).
+		Render(m.search.View())
+
+	hint := styleSplashHint.Render("type to search · enter · esc to skip")
+
+	block := lipgloss.JoinVertical(lipgloss.Center, logo, "", tag, "", box, "", hint)
 	return lipgloss.Place(
 		m.width,
 		m.height,

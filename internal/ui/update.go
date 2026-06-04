@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/monkmode/ytune/internal/player"
+	"github.com/matheusbuniotto/termtube/internal/player"
 )
 
 func (m *Model) blurInputs() {
@@ -42,16 +42,37 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SplashDoneMsg:
 		if m.showSplash {
-			return m, m.dismissSplash()
+			// Auto-dismiss only if the user hasn't started typing a search.
+			if strings.TrimSpace(m.search.Value()) == "" {
+				return m, m.dismissSplash()
+			}
+			return m, nil
 		}
 
 	case tea.KeyMsg:
 		if m.showSplash {
-			if msg.String() == "ctrl+c" {
+			switch msg.String() {
+			case "ctrl+c":
 				m.svc.Stop()
 				return m, tea.Quit
+			case "enter":
+				q := strings.TrimSpace(m.search.Value())
+				cmd := m.dismissSplash()
+				if q == "" || strings.HasPrefix(q, ":") {
+					return m, cmd
+				}
+				m.loading = true
+				m.statusLine = "Searching…"
+				m.errMsg = ""
+				return m, tea.Batch(cmd, searchCmd(m.svc, q))
+			case "esc":
+				m.search.SetValue("")
+				return m, m.dismissSplash()
+			default:
+				var cmd tea.Cmd
+				m.search, cmd = m.search.Update(msg)
+				return m, cmd
 			}
-			return m, m.dismissSplash()
 		}
 
 		if m.jumpFocus {
@@ -92,6 +113,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.loading = true
 				m.errMsg = ""
 				m.statusLine = "Searching…"
+				m.blurInputs()
 				cmds = append(cmds, searchCmd(m.svc, q))
 			case "esc":
 				m.blurInputs()
@@ -196,11 +218,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusLine = ""
 		} else {
 			m.setResults(msg.Results)
-			m.statusLine = "Found results — Enter to play"
+			m.statusLine = "Found results — ↑↓/jk to move · Enter to play · a to queue"
 			m.errMsg = ""
 			m.panel = panelResults
 		}
-		cmds = append(cmds, tickCmd(m.svc))
 
 	case PlayDoneMsg:
 		m.loading = false
@@ -243,6 +264,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.showSplash {
+		// Keep the splash search cursor blinking by forwarding non-key msgs.
+		if m.searchFocus {
+			var cmd tea.Cmd
+			m.search, cmd = m.search.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 		return m, tea.Batch(cmds...)
 	}
 	if !m.searchFocus && !m.jumpFocus {

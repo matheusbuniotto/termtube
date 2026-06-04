@@ -11,9 +11,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/monkmode/ytune/internal/config"
-	"github.com/monkmode/ytune/internal/player"
-	"github.com/monkmode/ytune/internal/yt"
+	"github.com/matheusbuniotto/termtube/internal/config"
+	"github.com/matheusbuniotto/termtube/internal/player"
+	"github.com/matheusbuniotto/termtube/internal/yt"
 )
 
 type panel int
@@ -111,7 +111,8 @@ func NewModel(cfg config.Config, opts Options) *Model {
 
 func (m *Model) Init() tea.Cmd {
 	if m.showSplash {
-		return splashDoneCmd()
+		m.searchFocus = true
+		return tea.Batch(splashDoneCmd(), m.search.Focus(), textinput.Blink)
 	}
 	return m.appInit()
 }

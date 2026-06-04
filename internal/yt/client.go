@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/monkmode/ytune/internal/config"
+	"github.com/matheusbuniotto/termtube/internal/config"
 )
 
 const defaultTimeout = 45 * time.Second

@@ -20,7 +20,7 @@ func Default() Config {
 	if err != nil {
 		home = "."
 	}
-	cache := filepath.Join(home, ".cache", "ytune")
+	cache := filepath.Join(home, ".cache", "termtube")
 	return Config{
 		YtDlpPath:   "yt-dlp",
 		MpvPath:     "mpv",
@@ -56,7 +56,7 @@ func configPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", "ytune", "config.yaml"), nil
+	return filepath.Join(home, ".config", "termtube", "config.yaml"), nil
 }
 
 func (c Config) EnsureCacheDir() error {

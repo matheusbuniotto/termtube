@@ -7,8 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/monkmode/ytune/internal/config"
-	"github.com/monkmode/ytune/internal/ui"
+	"github.com/matheusbuniotto/termtube/internal/config"
+	"github.com/matheusbuniotto/termtube/internal/ui"
 )
 
 func main() {

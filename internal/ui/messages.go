@@ -1,6 +1,6 @@
 package ui
 
-import "github.com/monkmode/ytune/internal/yt"
+import "github.com/matheusbuniotto/termtube/internal/yt"
 
 type SearchDoneMsg struct {
 	Results []yt.Video

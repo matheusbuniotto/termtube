@@ -1,6 +1,6 @@
 package player
 
-import "github.com/monkmode/ytune/internal/yt"
+import "github.com/matheusbuniotto/termtube/internal/yt"
 
 type Track struct {
 	Video    yt.Video

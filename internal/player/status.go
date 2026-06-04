@@ -2,9 +2,10 @@ package player
 
 import (
 	"context"
+	"sync"
 
-	"github.com/monkmode/ytune/internal/config"
-	"github.com/monkmode/ytune/internal/yt"
+	"github.com/matheusbuniotto/termtube/internal/config"
+	"github.com/matheusbuniotto/termtube/internal/yt"
 )
 
 type Status struct {
@@ -24,6 +25,12 @@ type Service struct {
 	yt    *yt.Client
 	mpv   *MPV
 	queue *Queue
+
+	// playMu serializes every operation that starts or stops playback
+	// (play / next / prev / auto-advance / stop). These run on independent
+	// tea.Cmd goroutines, so without it two starts can overlap and leave an
+	// orphaned mpv process playing in the background.
+	playMu sync.Mutex
 }
 
 func NewService(cfg config.Config) *Service {
@@ -44,6 +51,8 @@ func (s *Service) Queue() *Queue {
 }
 
 func (s *Service) Stop() {
+	s.playMu.Lock()
+	defer s.playMu.Unlock()
 	s.mpv.Stop()
 }
 
@@ -65,6 +74,12 @@ func (s *Service) resolveURL(ctx context.Context, index int) (string, error) {
 }
 
 func (s *Service) PlayNow(ctx context.Context, v yt.Video) error {
+	s.playMu.Lock()
+	defer s.playMu.Unlock()
+	return s.playNowLocked(ctx, v)
+}
+
+func (s *Service) playNowLocked(ctx context.Context, v yt.Video) error {
 	if idx := s.queue.IndexByVideoID(v.ID); idx >= 0 {
 		s.queue.SetCurrent(idx)
 		url, err := s.resolveURL(ctx, idx)
@@ -92,6 +107,12 @@ func (s *Service) PlayVideo(ctx context.Context, v yt.Video) error {
 }
 
 func (s *Service) PlayTrackAt(ctx context.Context, index int) error {
+	s.playMu.Lock()
+	defer s.playMu.Unlock()
+	return s.playTrackAtLocked(ctx, index)
+}
+
+func (s *Service) playTrackAtLocked(ctx context.Context, index int) error {
 	url, err := s.resolveURL(ctx, index)
 	if err != nil {
 		return err
@@ -112,17 +133,29 @@ func (s *Service) AddToQueue(ctx context.Context, v yt.Video) error {
 }
 
 func (s *Service) Next(ctx context.Context) error {
+	s.playMu.Lock()
+	defer s.playMu.Unlock()
+	return s.nextLocked(ctx)
+}
+
+func (s *Service) nextLocked(ctx context.Context) error {
 	if _, ok := s.queue.Next(); !ok {
 		return nil
 	}
-	return s.PlayTrackAt(ctx, s.queue.Current())
+	return s.playTrackAtLocked(ctx, s.queue.Current())
 }
 
 func (s *Service) Prev(ctx context.Context) error {
+	s.playMu.Lock()
+	defer s.playMu.Unlock()
+	return s.prevLocked(ctx)
+}
+
+func (s *Service) prevLocked(ctx context.Context) error {
 	if _, ok := s.queue.Prev(); !ok {
 		return nil
 	}
-	return s.PlayTrackAt(ctx, s.queue.Current())
+	return s.playTrackAtLocked(ctx, s.queue.Current())
 }
 
 func (s *Service) ToggleShuffle() bool {
@@ -187,6 +220,9 @@ func (s *Service) Status() Status {
 }
 
 func (s *Service) MaybeAdvance(ctx context.Context) error {
+	s.playMu.Lock()
+	defer s.playMu.Unlock()
+
 	if !s.mpv.Running() {
 		return nil
 	}
@@ -195,11 +231,11 @@ func (s *Service) MaybeAdvance(ctx context.Context) error {
 	}
 
 	if s.queue.Repeat() == RepeatOne {
-		return s.PlayTrackAt(ctx, s.queue.Current())
+		return s.playTrackAtLocked(ctx, s.queue.Current())
 	}
 
 	if s.queue.Current() >= s.queue.Len()-1 && s.queue.Repeat() != RepeatAll {
 		return nil
 	}
-	return s.Next(ctx)
+	return s.nextLocked(ctx)
 }

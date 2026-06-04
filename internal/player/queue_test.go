@@ -3,7 +3,7 @@ package player
 import (
 	"testing"
 
-	"github.com/monkmode/ytune/internal/yt"
+	"github.com/matheusbuniotto/termtube/internal/yt"
 )
 
 func TestQueueAddNextPrev(t *testing.T) {
