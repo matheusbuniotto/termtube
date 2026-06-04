@@ -1,6 +1,6 @@
 # termtube
 
-Terminal music player for YouTube. Search, queue tracks, and listen with **mpv** — no API keys.
+Terminal music player for YTB. Search, queue tracks, and listen with **mpv** — no API keys.
 
 ## Requirements
 
