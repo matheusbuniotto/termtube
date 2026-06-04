@@ -1,0 +1,29 @@
+package ui
+
+import "github.com/monkmode/ytune/internal/yt"
+
+type SearchDoneMsg struct {
+	Results []yt.Video
+	Err     error
+}
+
+type PlayDoneMsg struct {
+	Err error
+}
+
+type AddQueueDoneMsg struct {
+	Err error
+}
+
+type ResolveDoneMsg struct {
+	Err error
+}
+
+type PlayerTickMsg struct {
+	StatusTick
+}
+
+type StatusTick struct {
+	Advance bool
+	Err     error
+}
