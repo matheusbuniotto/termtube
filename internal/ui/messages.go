@@ -15,6 +15,11 @@ type AddQueueDoneMsg struct {
 	Err error
 }
 
+type SeekDoneMsg struct {
+	Seconds float64
+	Err     error
+}
+
 type ResolveDoneMsg struct {
 	Err error
 }

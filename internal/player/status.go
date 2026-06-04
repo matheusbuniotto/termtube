@@ -8,13 +8,15 @@ import (
 )
 
 type Status struct {
-	Title    string
-	Position float64
-	Duration float64
-	Paused   bool
-	Volume   float64
-	Playing  bool
-	EOF      bool
+	Title      string
+	Position   float64
+	Duration   float64
+	Paused     bool
+	Volume     float64
+	Playing    bool
+	EOF        bool
+	Shuffle    bool
+	Repeat     RepeatMode
 }
 
 type Service struct {
@@ -45,41 +47,67 @@ func (s *Service) Stop() {
 	s.mpv.Stop()
 }
 
-func (s *Service) PlayVideo(ctx context.Context, v yt.Video) error {
+func (s *Service) resolveURL(ctx context.Context, index int) (string, error) {
+	t, ok := s.queue.At(index)
+	if !ok {
+		return "", nil
+	}
+	if t.StreamURL != "" {
+		return t.StreamURL, nil
+	}
+	url, err := s.yt.AudioURL(ctx, t.Video.ID)
+	if err != nil {
+		return "", err
+	}
+	t.StreamURL = url
+	s.queue.SetTrack(index, t)
+	return url, nil
+}
+
+func (s *Service) PlayNow(ctx context.Context, v yt.Video) error {
+	if idx := s.queue.IndexByVideoID(v.ID); idx >= 0 {
+		s.queue.SetCurrent(idx)
+		url, err := s.resolveURL(ctx, idx)
+		if err != nil {
+			return err
+		}
+		if url == "" {
+			return nil
+		}
+		return s.mpv.PlayURL(url)
+	}
+
 	url, err := s.yt.AudioURL(ctx, v.ID)
 	if err != nil {
 		return err
 	}
 	track := Track{Video: v, StreamURL: url}
 	s.queue.Add(track)
-	idx := s.queue.Len() - 1
-	s.queue.SetCurrent(idx)
+	s.queue.SetCurrent(s.queue.Len() - 1)
 	return s.mpv.PlayURL(url)
 }
 
-func (s *Service) PlayTrackAt(ctx context.Context, index int) error {
-	t, ok := s.queue.At(index)
-	if !ok {
-		return nil
-	}
-	if t.StreamURL == "" {
-		url, err := s.yt.AudioURL(ctx, t.Video.ID)
-		if err != nil {
-			return err
-		}
-		t.StreamURL = url
-		s.queue.tracks[index] = t
-	}
-	s.queue.SetCurrent(index)
-	return s.mpv.PlayURL(t.StreamURL)
+func (s *Service) PlayVideo(ctx context.Context, v yt.Video) error {
+	return s.PlayNow(ctx, v)
 }
 
-func (s *Service) AddToQueue(ctx context.Context, v yt.Video) error {
-	url, err := s.yt.AudioURL(ctx, v.ID)
+func (s *Service) PlayTrackAt(ctx context.Context, index int) error {
+	url, err := s.resolveURL(ctx, index)
 	if err != nil {
 		return err
 	}
-	s.queue.Add(Track{Video: v, StreamURL: url})
+	if url == "" {
+		return nil
+	}
+	s.queue.SetCurrent(index)
+	return s.mpv.PlayURL(url)
+}
+
+func (s *Service) AddToQueue(ctx context.Context, v yt.Video) error {
+	if s.queue.IndexByVideoID(v.ID) >= 0 {
+		return nil
+	}
+	s.queue.Add(Track{Video: v})
 	return nil
 }
 
@@ -97,8 +125,30 @@ func (s *Service) Prev(ctx context.Context) error {
 	return s.PlayTrackAt(ctx, s.queue.Current())
 }
 
+func (s *Service) ToggleShuffle() bool {
+	return s.queue.ToggleShuffle()
+}
+
+func (s *Service) CycleRepeat() RepeatMode {
+	return s.queue.CycleRepeat()
+}
+
 func (s *Service) TogglePause() error {
 	return s.mpv.TogglePause()
+}
+
+func (s *Service) Seek(seconds float64) error {
+	if !s.mpv.Running() {
+		return nil
+	}
+	return s.mpv.Seek(seconds)
+}
+
+func (s *Service) SeekRelative(delta float64) error {
+	if !s.mpv.Running() {
+		return nil
+	}
+	return s.mpv.SeekRelative(delta)
 }
 
 func (s *Service) VolumeUp() error {
@@ -119,6 +169,8 @@ func (s *Service) Status() Status {
 		Playing: s.mpv.Running(),
 		Paused:  s.mpv.IsPaused(),
 		EOF:     s.mpv.EOF(),
+		Shuffle: s.queue.Shuffle(),
+		Repeat:  s.queue.Repeat(),
 	}
 	if t, ok := s.queue.CurrentTrack(); ok {
 		st.Title = t.Video.Title
@@ -141,7 +193,12 @@ func (s *Service) MaybeAdvance(ctx context.Context) error {
 	if !s.mpv.EOF() {
 		return nil
 	}
-	if s.queue.Current() >= s.queue.Len()-1 {
+
+	if s.queue.Repeat() == RepeatOne {
+		return s.PlayTrackAt(ctx, s.queue.Current())
+	}
+
+	if s.queue.Current() >= s.queue.Len()-1 && s.queue.Repeat() != RepeatAll {
 		return nil
 	}
 	return s.Next(ctx)

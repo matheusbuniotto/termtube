@@ -201,6 +201,17 @@ func (m *MPV) Volume() float64 {
 	return m.volume
 }
 
+func (m *MPV) Seek(seconds float64) error {
+	if seconds < 0 {
+		seconds = 0
+	}
+	return m.command("seek", seconds, "absolute")
+}
+
+func (m *MPV) SeekRelative(delta float64) error {
+	return m.command("seek", delta, "relative")
+}
+
 func (m *MPV) EOF() bool {
 	if !m.Running() {
 		return true

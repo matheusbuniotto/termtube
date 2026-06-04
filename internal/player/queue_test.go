@@ -34,3 +34,27 @@ func TestQueueAddNextPrev(t *testing.T) {
 		t.Fatalf("after remove len=%d current=%d", q.Len(), q.Current())
 	}
 }
+
+func TestQueueRepeatAll(t *testing.T) {
+	q := NewQueue()
+	q.Add(Track{Video: yt.Video{ID: "a"}})
+	q.Add(Track{Video: yt.Video{ID: "b"}})
+	q.SetCurrent(1)
+	q.repeat = RepeatAll
+
+	idx, ok := q.NextIndex()
+	if !ok || idx != 0 {
+		t.Fatalf("next index = %d ok=%v", idx, ok)
+	}
+}
+
+func TestQueueIndexByVideoID(t *testing.T) {
+	q := NewQueue()
+	q.Add(Track{Video: yt.Video{ID: "xyz", Title: "T"}})
+	if q.IndexByVideoID("xyz") != 0 {
+		t.Fatal("expected index 0")
+	}
+	if q.IndexByVideoID("missing") != -1 {
+		t.Fatal("expected -1")
+	}
+}

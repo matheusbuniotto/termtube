@@ -25,6 +25,7 @@ go install ./cmd/ytune
 
 ```bash
 ytune
+ytune --no-splash   # skip intro
 ```
 
 On launch you'll see an ASCII splash screen — press any key (or wait ~2 seconds) to enter the player.
@@ -42,6 +43,11 @@ On launch you'll see an ASCII splash screen — press any key (or wait ~2 second
 | `n` / `p` | Next / previous track |
 | `+` / `-` | Volume up / down |
 | `d` | Remove from queue |
+| `g` | Jump to time (enter `m:ss` or `m s`) |
+| `:jump 1:30` | Jump via search bar command |
+| `←` / `→` | Seek −10s / +10s |
+| `h` | Toggle shuffle |
+| `r` | Cycle repeat (off → all → one) |
 | `q` | Quit |
 
 ## Config

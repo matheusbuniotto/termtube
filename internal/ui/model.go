@@ -38,14 +38,16 @@ type Model struct {
 	width    int
 	height   int
 
-	panel      panel
-	search     textinput.Model
-	results    list.Model
-	queueList  list.Model
-	spin       spinner.Model
-	progress   progress.Model
-	loading    bool
+	panel       panel
+	search      textinput.Model
+	jump        textinput.Model
+	results     list.Model
+	queueList   list.Model
+	spin        spinner.Model
+	progress    progress.Model
+	loading     bool
 	searchFocus bool
+	jumpFocus   bool
 
 	resultsData []yt.Video
 	statusLine  string
@@ -57,13 +59,20 @@ type Model struct {
 	volume    float64
 
 	showSplash bool
+	shuffleOn  bool
+	repeatMode string
 }
 
-func NewModel(cfg config.Config) *Model {
+func NewModel(cfg config.Config, opts Options) *Model {
 	ti := textinput.New()
 	ti.Placeholder = "Search YouTube…"
 	ti.CharLimit = 120
 	ti.Width = 50
+
+	ji := textinput.New()
+	ji.Placeholder = "Jump m:ss or m s (e.g. 1:30)…"
+	ji.CharLimit = 32
+	ji.Width = 40
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -83,16 +92,20 @@ func NewModel(cfg config.Config) *Model {
 	queue.SetShowStatusBar(false)
 	queue.SetFilteringEnabled(false)
 
+	showSplash := !opts.NoSplash
+
 	return &Model{
 		cfg:        cfg,
 		svc:        player.NewService(cfg),
 		search:     ti,
+		jump:       ji,
 		results:    results,
 		queueList:  queue,
 		spin:       sp,
 		progress:   prog,
 		playState:  "⏹",
-		showSplash: true,
+		showSplash: showSplash,
+		repeatMode: "off",
 	}
 }
 
@@ -170,10 +183,16 @@ func playCmd(svc *player.Service, v yt.Video) tea.Cmd {
 	}
 }
 
-func addQueueCmd(svc *player.Service, v yt.Video) tea.Cmd {
+func seekCmd(svc *player.Service, raw string) tea.Cmd {
 	return func() tea.Msg {
-		err := svc.AddToQueue(context.Background(), v)
-		return AddQueueDoneMsg{Err: err}
+		sec, err := ParseSeek(raw)
+		if err != nil {
+			return SeekDoneMsg{Err: err}
+		}
+		if err := svc.Seek(sec); err != nil {
+			return SeekDoneMsg{Err: err}
+		}
+		return SeekDoneMsg{Seconds: sec}
 	}
 }
 

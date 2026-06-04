@@ -25,19 +25,27 @@ func (m *Model) View() string {
 
 	header := styleHeader.Render("ytune") +
 		styleMode.Render("  ") +
-		modeLabel(m.panel)
+		modeLabel(m.panel) +
+		styleMode.Render(fmt.Sprintf("  · shuffle %s · repeat %s", onOff(m.shuffleOn), m.repeatMode))
 	if m.loading {
 		header += "  " + m.spin.View()
 	}
 	b.WriteString(styleApp.Render("♫ ") + header)
 	b.WriteString("\n\n")
 
-	searchLine := m.search.View()
-	if m.searchFocus {
-		searchLine = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorAccent).Padding(0, 1).Render(searchLine)
+	if m.jumpFocus {
+		line := m.jump.View()
+		line = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorAccent).Padding(0, 1).Render(line)
+		b.WriteString(styleStatus.Render("Jump") + " " + line)
+		b.WriteString("\n\n")
+	} else {
+		searchLine := m.search.View()
+		if m.searchFocus {
+			searchLine = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorAccent).Padding(0, 1).Render(searchLine)
+		}
+		b.WriteString(searchLine)
+		b.WriteString("\n\n")
 	}
-	b.WriteString(searchLine)
-	b.WriteString("\n\n")
 
 	if m.panel == panelQueue {
 		b.WriteString(m.queueList.View())
@@ -54,7 +62,9 @@ func (m *Model) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(styleHelp.Render("/ search · Tab panel · Enter play · a add · Space pause · n/p next/prev · q quit"))
+	b.WriteString(styleHelp.Render(
+		"/ search · :jump 1:30 · g jump · Tab · Enter play · a add · Space · ←→ ±10s · h shuffle · r repeat · n/p · q quit",
+	))
 
 	return b.String()
 }
